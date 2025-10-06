@@ -76,7 +76,7 @@ namespace UnlimitedAbilities
             TryZero(__instance, "cooldown");
             TryZero(__instance, "timeUntilReady");
 
-            // “next activation” style fields (varies by build)
+            // “next activation” style fields
             TryZero(__instance, "nextActivateTime");
             TryZero(__instance, "nextActivation");
             TryZero(__instance, "nextActivateTick");
@@ -98,4 +98,5 @@ namespace UnlimitedAbilities
         }
     }
 }
+
 

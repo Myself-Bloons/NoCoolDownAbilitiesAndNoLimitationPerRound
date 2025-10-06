@@ -6,8 +6,7 @@ using Il2CppAssets.Scripts.Models;
 using Il2CppAssets.Scripts.Models.Towers.Behaviors.Abilities;
 using Il2CppAssets.Scripts.Simulation.Towers.Behaviors.Abilities;
 using MelonLoader;
-// DO NOT: using Harmony;
-// (Optional) you can still keep: using HarmonyLib;
+
 
 [assembly: MelonInfo(typeof(UnlimitedAbilities.Main), "Unlimited Abilities (No Cooldown)", "1.2.1", "PierreMartin")]
 [assembly: MelonGame("Ninja Kiwi", "BloonsTD6")]
@@ -77,7 +76,7 @@ namespace UnlimitedAbilities
             TryZero(__instance, "cooldown");
             TryZero(__instance, "timeUntilReady");
 
-            // ìnext activationî style fields (varies by build)
+            // ‚Äúnext activation‚Äù style fields (varies by build)
             TryZero(__instance, "nextActivateTime");
             TryZero(__instance, "nextActivation");
             TryZero(__instance, "nextActivateTick");
@@ -99,3 +98,4 @@ namespace UnlimitedAbilities
         }
     }
 }
+

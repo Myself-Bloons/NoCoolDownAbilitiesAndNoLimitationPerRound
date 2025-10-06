@@ -1,102 +1,160 @@
-using System.Linq;
-using System.Reflection;
 using BTD_Mod_Helper;
-using BTD_Mod_Helper.Extensions; // GetDescendants<T>()
+using BTD_Mod_Helper.Api.ModOptions;
+using BTD_Mod_Helper.Extensions;
 using Il2CppAssets.Scripts.Models;
+using Il2CppAssets.Scripts.Models.Towers;
 using Il2CppAssets.Scripts.Models.Towers.Behaviors.Abilities;
+using Il2CppAssets.Scripts.Simulation.Towers;
 using Il2CppAssets.Scripts.Simulation.Towers.Behaviors.Abilities;
 using MelonLoader;
+using UnityEngine;
 
-
-[assembly: MelonInfo(typeof(UnlimitedAbilities.Main), "Unlimited Abilities (No Cooldown)", "1.2.1", "PierreMartin")]
+[assembly: MelonInfo(typeof(UnlimitedAbilities_NoPatch_v2.Main), "Unlimited Abilities (No Patch NoCD) v2", "2.0.0", "Myself")]
 [assembly: MelonGame("Ninja Kiwi", "BloonsTD6")]
 
-namespace UnlimitedAbilities
+namespace UnlimitedAbilities_NoPatch_v2
 {
     public class Main : BloonsTD6Mod
     {
-        private HarmonyLib.Harmony _harmony;
+        public static readonly ModSettingBool StartEnabled = new(true)
+        {
+            displayName = "Enable No-Cooldown (default)",
+            description = "Initial default; press hotkey to toggle during play.",
+            button = true,
+            enabledText = "ON",
+            disabledText = "OFF"
+        };
+
+        public static readonly ModSettingHotkey ToggleKey = new(UnityEngine.KeyCode.F8)
+        {
+            displayName = "Toggle Hotkey",
+            description = "Press to toggle No-Cooldown ON/OFF."
+        };
+
+        private static bool _enabled;
 
         public override void OnApplicationStart()
         {
-            _harmony = new HarmonyLib.Harmony("UnlimitedAbilities.NoCooldown.Runtime");
-            PatchAbilityRuntime(_harmony);
+            _enabled = StartEnabled;
+            MelonLogger.Msg($"[NoPatch NoCD v2] Startup: enabled={_enabled}");
         }
 
-        // Model-side: unlimited uses + 0s in UI
-        public override void OnNewGameModel(GameModel model)
+        public override void OnUpdate()
         {
-            foreach (var ability in model.GetDescendants<AbilityModel>().ToList())
+            if (ToggleKey.JustPressed())
             {
-                ability.maxActivationsPerRound = 99999; // unlimited uses per round
-                ability.cooldown = 0;               // UI shows 0s
+                _enabled = !_enabled;
+                MelonLogger.Msg($"[NoPatch NoCD v2] {(_enabled ? "ENABLED" : "DISABLED")}");
             }
         }
 
-        // Runtime: hook whatever "update-like" methods actually exist on Ability
-        private static void PatchAbilityRuntime(HarmonyLib.Harmony h)
+        public override void OnNewGameModel(GameModel model)
         {
-            var abilityType = typeof(Ability);
-            var post = new HarmonyLib.HarmonyMethod(
-                typeof(Main).GetMethod(nameof(AfterAbilityUpdatePostfix), BindingFlags.Static | BindingFlags.NonPublic)
-            );
+            if (model == null) return;
+            var towers = model.towers;
+            if (towers == null) return;
 
-            int count = 0;
-            foreach (var m in abilityType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            for (int t = 0; t < towers.Count; t++)
             {
-                if (m.IsSpecialName) continue;              // skip get_/set_
-                if (m.ReturnType != typeof(void)) continue; // only void methods
+                var tm = towers[t];
+                if (tm == null) continue;
 
-                var n = m.Name;
-                if (IsUpdateLike(n))
+                var abilities = tm.GetBehaviors<AbilityModel>();
+                if (abilities == null || abilities.Count == 0) continue;
+
+                for (int i = 0; i < abilities.Count; i++)
                 {
-                    h.Patch(m, postfix: post);
-                    count++;
+                    var a = abilities[i];
+                    a.cooldown = 0f;
+                    a.maxActivationsPerRound = -1;
                 }
             }
 
-            MelonLogger.Msg($"[UnlimitedAbilities] Patched {count} Ability update-like methods.");
+            MelonLogger.Msg("[NoPatch NoCD v2] Model pass: cooldown=0, per-round=unlimited.");
         }
 
-        private static bool IsUpdateLike(string n) =>
-            n.Equals("Update", System.StringComparison.OrdinalIgnoreCase) ||
-            n.Equals("FixedUpdate", System.StringComparison.OrdinalIgnoreCase) ||
-            n.Equals("OnUpdate", System.StringComparison.OrdinalIgnoreCase) ||
-            n.Equals("Step", System.StringComparison.OrdinalIgnoreCase) ||
-            n.IndexOf("Tick", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-            n.IndexOf("Process", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-            n.IndexOf("Simulate", System.StringComparison.OrdinalIgnoreCase) >= 0;
-
-        // Postfix: zero the actual cooldown timers/markers on the Ability instance
-        private static void AfterAbilityUpdatePostfix(Ability __instance)
+        public override void OnAbilityCast(Ability ability)
         {
-            TryZero(__instance, "cooldownTimeRemaining");
-            TryZero(__instance, "remainingCooldown");
-            TryZero(__instance, "cooldownTimer");
-            TryZero(__instance, "cooldown");
-            TryZero(__instance, "timeUntilReady");
-
-            // “next activation” style fields
-            TryZero(__instance, "nextActivateTime");
-            TryZero(__instance, "nextActivation");
-            TryZero(__instance, "nextActivateTick");
-            TryZero(__instance, "lastActivatedAt");
-            TryZero(__instance, "abilityCooldown");
-            TryZero(__instance, "abilityCooldownRemaining");
+            if (!_enabled || ability == null) return;
+            try { ability.cooldownTimeRemaining = 0f; }
+            catch (global::System.Exception ex) { MelonLogger.Warning($"[NoPatch NoCD v2] OnAbilityCast zero failed: {ex.Message}"); }
         }
 
-        private static void TryZero(object obj, string fieldName)
+        public override void OnTowerModelChanged(Tower tower, Model newModel)
         {
-            var f = obj.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (f == null) return;
+            ZeroNowMaybeNextFrame(tower);
+        }
 
-            var t = f.FieldType;
-            if (t == typeof(float)) f.SetValue(obj, 0f);
-            else if (t == typeof(double)) f.SetValue(obj, 0d);
-            else if (t == typeof(int)) f.SetValue(obj, 0);
-            else if (t == typeof(long)) f.SetValue(obj, 0L);
+        public override void OnTowerUpgraded(Tower tower, string upgradeName, TowerModel newModel)
+        {
+            if (newModel != null)
+            {
+                var abilities = newModel.GetBehaviors<AbilityModel>();
+                if (abilities != null && abilities.Count > 0)
+                {
+                    for (int i = 0; i < abilities.Count; i++)
+                    {
+                        var a = abilities[i];
+                        a.cooldown = 0f;
+                        a.maxActivationsPerRound = -1;
+                    }
+                }
+            }
+            ZeroNowMaybeNextFrame(tower);
+        }
+
+        private static void ZeroNowMaybeNextFrame(Tower tower)
+        {
+            if (!_enabled || tower == null) return;
+
+            bool changed = TryZeroCooldowns(tower);
+            if (changed)
+            {
+                MelonCoroutines.Start(ZeroNextFrameOnce(tower));
+            }
+        }
+
+        private static System.Collections.IEnumerator ZeroNextFrameOnce(Tower tower)
+        {
+            yield return null; // next frame
+            TryZeroCooldowns(tower);
+        }
+
+        private static bool TryZeroCooldowns(Tower tower)
+        {
+            try
+            {
+                var entity = (tower != null) ? tower.entity : null;
+                if (entity == null) return false;
+
+                var enumerable = entity.GetBehaviors<Il2CppAssets.Scripts.Simulation.Towers.Behaviors.Abilities.Ability>();
+                if (enumerable == null) return false;
+
+                bool changed = false;
+
+                // Generic enumerator + non-generic cast for MoveNext()
+                global::Il2CppSystem.Collections.Generic.IEnumerator<Il2CppAssets.Scripts.Simulation.Towers.Behaviors.Abilities.Ability> gen = enumerable.GetEnumerator();
+                var it = (global::Il2CppSystem.Collections.IEnumerator)(object)gen;
+
+                while (it != null && it.MoveNext())
+                {
+                    var ab = gen.Current;
+                    if (ab == null) continue;
+
+                    if (ab.cooldownTimeRemaining > 0f)
+                    {
+                        ab.cooldownTimeRemaining = 0f;
+                        changed = true;
+                    }
+                }
+
+                return changed;
+            }
+            catch (global::System.Exception ex)
+            {
+                MelonLogger.Warning($"[NoPatch NoCD v2] TryZeroCooldowns failed: {ex.Message}");
+                return false;
+            }
         }
     }
 }
-
-

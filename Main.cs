@@ -10,7 +10,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(UnlimitedAbilities_NoPatch_v3.Main), "Unlimited Abilities (NoPatch) v3", "3.0.0", "Myself")]
+[assembly: MelonInfo(typeof(UnlimitedAbilities_NoPatch_v3.Main), "Unlimited Abilities v3", "3.0.0", "Myself")]
 [assembly: MelonGame("Ninja Kiwi", "BloonsTD6")]
 
 namespace UnlimitedAbilities_NoPatch_v3
@@ -250,3 +250,4 @@ namespace UnlimitedAbilities_NoPatch_v3
         }
     }
 }
+

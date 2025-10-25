@@ -1,12 +1,11 @@
 <h1 align="center">
-<a href="https://github.com/Myself-Bloons/honorary-paragons/releases/latest/download/UnlimitedAbilities.dll">
+<a href="https://github.com/NoCoolDownAbilitiesAndNoLimitationPerRound/releases/latest/download/UnlimitedAbilities.dll">
     <img align="left" alt="Icon" height="90" src="icon.png">
     <img align="right" alt="Download" height="75" src="https://raw.githubusercontent.com/gurrenm3/BTD-Mod-Helper/master/BloonsTD6%20Mod%20Helper/Resources/DownloadBtn.png">
 </a>
 
 </h1>
 <h3 align="center">A simple mod that allows you to have No CoolDown on Abilities And No Limitation Per Round</h3>
-<img align="right" alt="Download" height="75" src="https://raw.githubusercontent.com/gurrenm3/BTD-Mod-Helper/master/BloonsTD6%20Mod%20Helper/Resources/DownloadBtn.png">
 <h1 align="center">BloonsClicker</h1>
 
 

@@ -6,7 +6,7 @@
 
 </h1>
 <h3 align="center">A simple mod that allows you to have No CoolDown on Abilities And No Limitation Per Round</h3>
-<h1 align="center">BloonsClicker</h1>
+<h1 align="center">UnlimitedAbilities</h1>
 
 
 [![Requires BTD6 Mod Helper](https://raw.githubusercontent.com/gurrenm3/BTD-Mod-Helper/master/banner.png)](https://github.com/gurrenm3/BTD-Mod-Helper#readme)
